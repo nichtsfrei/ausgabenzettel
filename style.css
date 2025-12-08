@@ -1,0 +1,25 @@
+:root {
+  --bg: #eff2f2;
+  --fg: #000000;
+}
+
+* {
+  font-size: clamp(1rem, 2vw, 2rem);
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: monospace;
+}
+
+summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+}
+
+
+#info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(25ch, 1fr));
+}
