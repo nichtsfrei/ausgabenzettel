@@ -40,6 +40,7 @@ const labels = [
 ];
 
 function readableTextColor(hex) {
+  // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
   hex = hex.replace("#", "");
 
   let r = parseInt(hex.substring(0, 2), 16) / 255;
@@ -56,6 +57,7 @@ function readableTextColor(hex) {
 }
 
 window.onload = function () {
+  prepareDropDown(labels);
   updateEntries();
 };
 
@@ -64,7 +66,7 @@ function createAgenda(labels) {
   container.innerHTML = "";
   labels.sort((a, b) => a.value < b.value);
 
-  labels.forEach((label) => {
+  let createDetail = (label) => {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
     const currency = "€";
@@ -82,20 +84,22 @@ function createAgenda(labels) {
     details.appendChild(summary);
     details.appendChild(paragraph);
 
-    // Apply your dynamic-color class and CSS variables
     details.classList.add("dynamic-color");
     details.style.setProperty("--bg", label.color);
     details.style.setProperty("--fg", readableTextColor(label.color));
+    return details;
+  };
 
-    container.appendChild(details);
+  labels.forEach((label) => {
+    container.appendChild(createDetail(label));
   });
 }
 
-function createEntryTemplate(entry, index) {
+function createEntryTemplate(label, entry, index) {
   const details = document.createElement("details");
 
   const titleSpan = document.createElement("span");
-  titleSpan.textContent = entry.label;
+  titleSpan.textContent = label.title;
   const currencySpan = document.createElement("span");
   currencySpan.textContent = `${entry.value}${entry.currency}`;
 
@@ -113,6 +117,9 @@ function createEntryTemplate(entry, index) {
 
   details.appendChild(summary);
   details.appendChild(removeLink);
+
+  details.style.setProperty("--bg", label.color);
+  details.style.setProperty("--fg", readableTextColor(label.color));
   details.setAttribute("data-timestamp", entry.timestamp);
 
   return details;
@@ -136,6 +143,7 @@ function convertEmToPx(emValue, context) {
 
 function prepareDropDown(labels) {
   const details = document.getElementById("daily_label_select");
+  details.innerHTML = "";
   labels.forEach((label) => {
     const option = document.createElement("option");
     option.textContent = label.title;
@@ -145,18 +153,10 @@ function prepareDropDown(labels) {
 }
 
 function updateEntries() {
-  prepareDropDown(labels);
   const details = document.getElementById("details");
   const storedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
 
   details.innerHTML = "";
-
-  // const newEntry = {
-  //   value: Number(value).toFixed(2),
-  //   currency: currency,
-  //   label: label, // index
-  //   timestamp: Math.floor(Date.now() / 1000),
-  // };
 
   const prepared_labels = labels.map((label) => {
     label.value = 0;
@@ -175,13 +175,10 @@ function updateEntries() {
   if (storedData.length === 0) {
     details.innerHTML = "<p>No entries yet</p>";
   } else {
-    const titled = storedData.map((e) => {
-      let label = labels.find((item) => item.index === Number(e.label));
-      e.label = label.title;
-      return e;
-    });
-    const pie_size = convertEmToPx(summaries.length);
-    const colors = ["#80a8cc", "#da3b3e", "#ffa921", "red"];
+    const pie_size = convertEmToPx(
+      // padding size is 0.25
+      summaries.length * (summaries.length * 0.25 + 0.25),
+    );
     const don = donut({
       data: summaries,
       size: pie_size,
@@ -190,12 +187,19 @@ function updateEntries() {
     document.getElementById("daily_donut").innerHTML = don.innerHTML;
 
     const offset = storedData.length - 1;
-    titled.reverse().forEach((e, index) => {
-      const entry = createEntryTemplate(e, offset - index);
+    storedData.reverse().forEach((e, index) => {
+      const label = labels.find((item) => item.index === Number(e.label));
+      const entry = createEntryTemplate(label, e, offset - index);
       details.appendChild(entry);
     });
   }
 }
+
+document
+  .getElementById("daily_label_select")
+  .addEventListener("change", function () {
+    document.getElementById("daily_input").focus();
+  });
 
 document.getElementById("daily_form").addEventListener("submit", function () {
   event.preventDefault();

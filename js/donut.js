@@ -105,10 +105,5 @@
     }
   };
 
-  donut.setColor = function (arc, color) {
-    arc.setAttribute("stroke", color);
-    return arc;
-  };
-
   return donut;
 });
