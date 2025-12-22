@@ -1,0 +1,19 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+axum = "0"
+axum-extra = "0.12.2"
+axum-server = { version = "0", features = ["tls-rustls"] }
+data-encoding = "2.9.0"
+fs-err = { version = "3.2.0", features = ["tokio"] }
+futures-util = "0.3.31"
+ring = "0.17.14"
+rustls = "0.23.35"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7.17"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

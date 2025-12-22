@@ -57,9 +57,32 @@ function readableTextColor(hex) {
 }
 
 window.onload = function () {
+  storeCurrentEtag();
   prepareDropDown(labels);
   updateEntries();
 };
+
+function storeEtag(response) {
+  let etag = response.headers.get("etag");
+  console.log("stored", etag);
+  localStorage.setItem("etag", etag);
+}
+
+function storeCurrentEtag() {
+  fetch("/", {
+    method: "HEAD",
+  })
+    .then((response) => {
+      if (response.status === 200) {
+        storeEtag(response);
+      } else {
+        console.log("unexpected status", response);
+      }
+    })
+    .catch((error) => {
+      console.log("Error:", error);
+    });
+}
 
 function createAgenda(labels) {
   const container = document.getElementById("label_agenda");
@@ -95,7 +118,7 @@ function createAgenda(labels) {
   });
 }
 
-function createEntryTemplate(label, entry, index) {
+function createEntryTemplate(label, entry) {
   const details = document.createElement("details");
 
   const titleSpan = document.createElement("span");
@@ -112,7 +135,7 @@ function createEntryTemplate(label, entry, index) {
   removeLink.href = "#";
   removeLink.addEventListener("click", function (e) {
     e.preventDefault();
-    removeEntry(index);
+    removeEntry(e, entry.timestamp);
   });
 
   details.appendChild(summary);
@@ -120,17 +143,29 @@ function createEntryTemplate(label, entry, index) {
 
   details.style.setProperty("--bg", label.color);
   details.style.setProperty("--fg", readableTextColor(label.color));
-  details.setAttribute("data-timestamp", entry.timestamp);
+  details.setAttribute("entry", JSON.stringify(entry));
 
   return details;
 }
 
-function removeEntry(index) {
+// TODO: maybe do everything event based?
+function removeEntry(e, timestamp) {
   const storedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
 
-  storedData.splice(index, 1);
-  localStorage.setItem("dailyEntries", JSON.stringify(storedData));
+  let index = storedData.findIndex((element) => {
+    element.timestamp == timestamp;
+  });
+  if (index > -1) {
+    storedData.splice(index, 1);
+  } else {
+    const newEntry = {
+      event: "remove",
+      timestamp: timestamp,
+    };
+    storedData.push(newEntry);
+  }
 
+  localStorage.setItem("dailyEntries", JSON.stringify(storedData));
   updateEntries();
 }
 
@@ -152,47 +187,59 @@ function prepareDropDown(labels) {
   });
 }
 
+function getHTMLEntries(cached) {
+  const details = document.getElementById("details").children;
+  const results = [];
+  for (let i = 0; i < details.length; ++i) {
+    let entry = JSON.parse(details[i].getAttribute("entry"));
+    if (cached.findIndex((e) => e.timestamp == entry.timestamp) == -1) {
+      results.push(entry);
+    }
+  }
+
+  return results;
+}
+
 function updateEntries() {
   const details = document.getElementById("details");
-  const storedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
+  const cachedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
+  const storedData = getHTMLEntries(cachedData);
+  storedData.push(...cachedData);
 
+  //TODO: don't redraw on cachedData.length === 0 but add remove listener
   details.innerHTML = "";
-
   const prepared_labels = labels.map((label) => {
     label.value = 0;
     return label;
   });
-  const summaries = storedData.reduce((p, c) => {
-    console.log(p, c);
-    let idx = p.findIndex((item) => item.index === Number(c.label));
-    let e = p[idx];
-    e.value += Number(c.value);
-    p[idx] = e;
+  console.log(storedData);
+
+  const dont_draw = storedData
+    .filter((e) => e.event === "remove")
+    .map((e) => e.timestamp);
+  const drawData = storedData.filter((e) => e.event !== "remove");
+  const summaries = drawData.reverse().reduce((p, c) => {
+    if (!dont_draw.includes(c.timestamp)) {
+      let idx = p.findIndex((item) => item.index === Number(c.label));
+      let e = p[idx];
+      e.value += Number(c.value);
+      const entry = createEntryTemplate(e, c);
+      details.appendChild(entry);
+      p[idx] = e;
+    }
     return p;
   }, prepared_labels);
 
   createAgenda(summaries);
-  if (storedData.length === 0) {
-    details.innerHTML = "<p>No entries yet</p>";
-  } else {
-    const pie_size = convertEmToPx(
-      // padding size is 0.25
-      summaries.length * (summaries.length * 0.25 + 0.25),
-    );
-    const don = donut({
-      data: summaries,
-      size: pie_size,
-      weight: pie_size / 2,
-    });
-    document.getElementById("daily_donut").innerHTML = don.innerHTML;
-
-    const offset = storedData.length - 1;
-    storedData.reverse().forEach((e, index) => {
-      const label = labels.find((item) => item.index === Number(e.label));
-      const entry = createEntryTemplate(label, e, offset - index);
-      details.appendChild(entry);
-    });
-  }
+  const pie_size = convertEmToPx(
+    summaries.length * (summaries.length * 0.25 + 0.25),
+  );
+  const don = donut({
+    data: summaries,
+    size: pie_size,
+    weight: pie_size / 2,
+  });
+  document.getElementById("daily_donut").innerHTML = don.innerHTML;
 }
 
 document
@@ -222,4 +269,38 @@ document.getElementById("daily_form").addEventListener("submit", function () {
     updateEntries();
   }
   document.getElementById("daily_input").focus();
+});
+
+document.getElementById("menu_export").addEventListener("submit", function () {
+  event.preventDefault();
+  const target = document.getElementById("menu_export_select").value;
+  const htmlContent = "<!doctype html>" + document.documentElement.outerHTML;
+  console.log("target: ", target);
+  if (target === "server") {
+    fetch("/", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "text/html",
+        "if-match": localStorage.getItem("etag"),
+      },
+      body: htmlContent,
+    })
+      .then((response) => {
+        if (response.status === 200) {
+          localStorage.clear();
+        }
+        storeEtag(response);
+        document.innerHTML = response.text();
+      })
+      .catch((error) => {
+        console.log("Error:", error);
+      });
+  } else if (target === "file") {
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "ausgabenzettel.html";
+    link.click();
+    localStorage.clear();
+  }
 });

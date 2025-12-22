@@ -18,3 +18,6 @@ body.template: body.html scripts.template body_begin.template body_end.template
 
 index.html: header.template body.template tail.template
 	cat header.template  body.template tail.template > index.html
+
+install: index.html
+	cp index.html ../backend/initial/index.html
