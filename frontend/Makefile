@@ -14,7 +14,7 @@ scripts.template: $(SCRIPT_TEMPLATES)
 	cat $(SCRIPT_TEMPLATES) > scripts.template
 
 body.template: body.html scripts.template body_begin.template body_end.template
-	cat body_begin.template body.html scripts.template body_end.template > body.template
+	cat body_begin.template scripts.template body.html body_end.template > body.template
 
 index.html: header.template body.template tail.template
 	cat header.template  body.template tail.template > index.html
