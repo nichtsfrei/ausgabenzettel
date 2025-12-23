@@ -57,7 +57,8 @@ EOF
 
 mkdir -p "$CA_DIR/certs"
 touch "$CA_DIR/index.txt"
-echo 1000 > "$CA_DIR/serial"
+SERIAL_FILE="$CA_DIR/serial"
+[[ -f "$SERIAL_FILE" ]] && SERIAL=$(<"$SERIAL_FILE") && echo $((SERIAL + 1)) > "$SERIAL_FILE" || echo 1000 > "$SERIAL_FILE"
 
 cat > "$CLIENT_CONFIG_TEMPLATE" <<EOF
 [ req ]
