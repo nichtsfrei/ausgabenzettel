@@ -8,14 +8,14 @@ mod certs;
 use axum::{
     BoxError, Router,
     body::{Body, Bytes},
-    extract::Request,
+    extract::{Request, State},
     http::{StatusCode, header},
     response::IntoResponse,
     routing::{get, head, put},
 };
 use axum_server::tls_rustls::RustlsConfig;
-use futures_util::Stream;
-use futures_util::TryStreamExt;
+use futures_util::{Stream, StreamExt};
+use futures_util::{TryStreamExt, stream::Chain};
 use ring::digest::{Context, SHA256};
 use std::{
     io::{self},
@@ -26,6 +26,79 @@ use std::{
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::{ReaderStream, StreamReader};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+enum ReturnType {
+    Full,
+    Content,
+}
+
+#[derive(Clone)]
+struct PageStreamer {
+    upload: PathBuf,
+    empty_content_etag: String,
+}
+
+impl PageStreamer {
+    const HEADER: &'static [u8] = include_bytes!("../initial/head.template");
+    const EMPTY_CONTENT: &'static [u8] = include_bytes!("../initial/content.template");
+    const TAIL: &'static [u8] = include_bytes!("../initial/tail.template");
+    fn path(&self, file: &str) -> Option<PathBuf> {
+        let current = self.upload.join(file);
+        if current.exists() && current.is_file() {
+            Some(current)
+        } else {
+            None
+        }
+    }
+
+    async fn etag(&self, path: Option<&PathBuf>) -> String {
+        if let Some(path) = path.as_ref() {
+            etag_of(path).await
+        } else {
+            self.empty_content_etag.clone()
+        }
+    }
+
+    async fn stream_file(
+        self,
+        rt: ReturnType,
+        status: StatusCode,
+        content_path: &str,
+    ) -> impl IntoResponse {
+        let path = self.path(content_path);
+        let header = [
+            (header::CONTENT_TYPE, "text/html".to_string()),
+            (header::ETAG, self.etag(path.as_ref()).await),
+        ];
+        match rt {
+            ReturnType::Full => {
+                // head.template, content, tail.template
+                let head = ReaderStream::new(Self::HEADER);
+                let tail = ReaderStream::new(Self::TAIL);
+                if let Some(path) = path.as_ref() {
+                    let file = File::open(path).await.unwrap();
+                    let content = ReaderStream::new(file);
+                    let stream = head.chain(content).chain(tail);
+                    (status, header, Body::from_stream(stream))
+                } else {
+                    let content = ReaderStream::new(Self::EMPTY_CONTENT);
+                    let stream = head.chain(content).chain(tail);
+                    (status, header, Body::from_stream(stream))
+                }
+            }
+            ReturnType::Content => {
+                if let Some(path) = path.as_ref() {
+                    let file = File::open(path).await.unwrap();
+                    let content = ReaderStream::new(file);
+                    (status, header, Body::from_stream(content))
+                } else {
+                    let content = ReaderStream::new(Self::EMPTY_CONTENT);
+                    (status, header, Body::from_stream(content))
+                }
+            }
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {
@@ -47,11 +120,16 @@ async fn main() {
     )
     .await
     .unwrap();
+    let ps = PageStreamer {
+        upload: PathBuf::from("upload"),
+        empty_content_etag: "INITIAL".into(),
+    };
 
     let app = Router::new()
         .route("/", put(save))
         .route("/", get(get_html))
-        .route("/", head(header));
+        .route("/", head(header))
+        .with_state(ps);
     let config = RustlsConfig::from_config(config.into());
 
     // run https server
@@ -63,30 +141,46 @@ async fn main() {
         .unwrap();
 }
 
-async fn header() -> impl IntoResponse {
-    let path = path("current.html");
-    let etag = etag_of(path).await;
+async fn header(State(ps): State<PageStreamer>) -> impl IntoResponse {
+    let path = ps.path("current.html");
+    let etag = ps.etag(path.as_ref()).await;
     let header = [(header::ETAG, etag)];
     (header, StatusCode::OK)
 }
 
-async fn save(request: Request) -> Result<impl IntoResponse, StatusCode> {
+async fn save(
+    State(ps): State<PageStreamer>,
+    request: Request,
+) -> Result<impl IntoResponse, StatusCode> {
     match request.headers().get(header::IF_MATCH) {
         None => {
             tracing::warn!("if match header missing");
-            Ok(stream_file(StatusCode::NOT_ACCEPTABLE, "current.html").await)
+            Ok(ps
+                .stream_file(
+                    ReturnType::Content,
+                    StatusCode::NOT_ACCEPTABLE,
+                    "current.html",
+                )
+                .await)
         }
         // TODO: error handling
         Some(etag) => {
             let etag = etag.to_str().unwrap();
-            let path = path("current.html");
-            let current_etag = etag_of(path).await;
+            let current_etag = ps.etag(ps.path("current").as_ref()).await;
             if etag != current_etag {
                 tracing::warn!(etag, current_etag, "Wrong etag");
-                Ok(stream_file(StatusCode::NOT_ACCEPTABLE, "current.html").await)
+                Ok(ps
+                    .stream_file(
+                        ReturnType::Content,
+                        StatusCode::NOT_ACCEPTABLE,
+                        "current.html",
+                    )
+                    .await)
             } else {
                 stream_to_file("current.html", request.into_body().into_data_stream()).await?;
-                Ok(stream_file(StatusCode::OK, "current.html").await)
+                Ok(ps
+                    .stream_file(ReturnType::Content, StatusCode::OK, "current.html")
+                    .await)
             }
         }
     }
@@ -187,29 +281,7 @@ where
     }
 }
 
-fn path(file: &str) -> PathBuf {
-    let current = std::path::Path::new("upload").join(file);
-    if current.exists() && current.is_file() {
-        current
-    } else {
-        tracing::debug!(file, "not found. Returning initial");
-        std::path::Path::new("initial").join("index.html")
-    }
-}
-
-async fn stream_file(status: StatusCode, file: &str) -> impl IntoResponse {
-    let path = path(file);
-    let etag = etag_of(&path).await;
-    let header = [
-        (header::CONTENT_TYPE, "text/html".to_string()),
-        (header::ETAG, etag),
-    ];
-
-    let file = File::open(path).await.unwrap(); // previously checked
-    let stream = ReaderStream::new(file);
-    (status, header, Body::from_stream(stream))
-}
-
-async fn get_html() -> impl IntoResponse {
-    stream_file(StatusCode::OK, "current.html").await
+async fn get_html(State(ps): State<PageStreamer>) -> impl IntoResponse {
+    ps.stream_file(ReturnType::Full, StatusCode::OK, "current.html")
+        .await
 }

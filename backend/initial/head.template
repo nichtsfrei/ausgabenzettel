@@ -755,8 +755,3 @@ function addDocumentEventListener() {
   <div id="daily_donut"></div>
   <div id="label_agenda"></div>
 </div>
-<div id="details">
-  <!-- those will contain each entry created by js -->
-</div>
-</body>
-</html>

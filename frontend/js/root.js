@@ -1,62 +1,96 @@
+class Label {
+  constructor(title, description, index) {
+    this.index = Number(index);
+    this.title = title;
+    this.description = description;
+  }
+  get toClass() {
+    return Label.toClass(this.index);
+  }
+  static toClass(index) {
+    return `cat${Number(index) + 1}`;
+  }
+
+  static fromClass(cl) {
+    if (!cl.startsWith("cat")) return null;
+    let cidx = cl.substring(3); // cat
+    return Number(cidx) - 1;
+  }
+}
+
 const labels = [
-  {
-    title: "Groceries",
-    description: "Food & drinks for home",
-    color: "#5f90b0",
-    index: 0,
-  },
-  {
-    title: "Dining Out",
-    description: "Restaurants, cafés, bars, takeout, delivery",
-    color: "#6068af",
-    index: 1,
-  },
-  {
-    title: "Housing",
-    description: "Rent, utilities, maintenance, repairs",
-    color: "#60afa6",
-    index: 2,
-  },
-  {
-    title: "Transportation",
-    description: "Public transit, fuel, car costs, bike, parking, rideshare",
-    color: "#7f62ad",
-    index: 3,
-  },
-  {
-    title: "Necessities",
-    description:
-      "Essential non-food items like cleaning supplies, toiletries, basic clothing",
-    color: "#62ad7f",
-    index: 4,
-  },
-  {
-    title: "Entertainment",
-    description:
-      "Electronics, gadgets, entertainment, hobbies, subscriptions, leisure activities",
-    color: "#a463ac",
-    index: 5,
-  },
+  new Label("Groceries", "Food & drinks for home", 0),
+  new Label("Dining Out", "Restaurants, cafés, bars, takeout, delivery", 1),
+  new Label("Housing", "Rent, utilities, maintenance, repairs", 2),
+  new Label(
+    "Transportation",
+    "Public transit, fuel, car costs, bike, parking, rideshare",
+    3,
+  ),
+  new Label(
+    "Necessities",
+    "Essential non-food items like cleaning supplies, toiletries, basic clothing",
+    4,
+  ),
+  new Label(
+    "Entertainment",
+    "Electronics, gadgets, entertainment, hobbies, subscriptions, leisure activities",
+    5,
+  ),
 ];
 
-function readableTextColor(hex) {
-  // https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
-  hex = hex.replace("#", "");
+class Entry {
+  constructor(value, currency, label, timestamp) {
+    this.value = Number(value).toFixed(2);
+    this.currency = currency;
+    this.label = Number(label);
+    this.timestamp = Number(timestamp);
+  }
+}
 
-  let r = parseInt(hex.substring(0, 2), 16) / 255;
-  let g = parseInt(hex.substring(2, 4), 16) / 255;
-  let b = parseInt(hex.substring(4, 6), 16) / 255;
+class Filter {
+  constructor() {
+    // <select id="menu_overview_select">
+    let mos = document.getElementById("menu_overview_select").value || "daily";
+    let selectedDate =
+      document.getElementById("daily_date").valueAsDate || new Date();
+    this.filter = mos;
+    this.selectedDate = selectedDate;
+  }
 
-  r = r <= 0.03928 ? r / 12.92 : Math.pow((r + 0.055) / 1.055, 2.4);
-  g = g <= 0.03928 ? g / 12.92 : Math.pow((g + 0.055) / 1.055, 2.4);
-  b = b <= 0.03928 ? b / 12.92 : Math.pow((b + 0.055) / 1.055, 2.4);
-
-  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
-  return L > 0.179 ? "#000000" : "#ffffff";
+  show(entry) {
+    if (this.filter == "all") {
+      return true;
+    }
+    let ed = new Date(entry.timestamp);
+    if (this.filter == "daily") {
+      return (
+        this.selectedDate.getDate() == ed.getDate() &&
+        this.selectedDate.getMonth() == ed.getMonth() &&
+        this.selectedDate.getYear() == ed.getYear()
+      );
+    }
+    if (this.filter == "weekly") {
+      return (
+        this.selectedDate.getYear() == ed.getYear() &&
+        this.selectedDate.getWeek() == ed.getWeek()
+      );
+    }
+    if (this.filter == "monthly") {
+      return (
+        this.selectedDate.getMonth() == ed.getMonth() &&
+        this.selectedDate.getYear() == ed.getYear()
+      );
+    }
+    if (this.filter == "yearly") {
+      return this.selectedDate.getYear() == ed.getYear();
+    }
+    return false;
+  }
 }
 
 window.onload = function () {
+  addDocumentEventListener();
   storeCurrentEtag();
   prepareDropDown(labels);
   updateEntries();
@@ -64,11 +98,11 @@ window.onload = function () {
 
 function storeEtag(response) {
   let etag = response.headers.get("etag");
-  console.log("stored", etag);
   localStorage.setItem("etag", etag);
 }
 
 function storeCurrentEtag() {
+  if (window.location.href.startsWith("file://")) return;
   fetch("/", {
     method: "HEAD",
   })
@@ -84,7 +118,7 @@ function storeCurrentEtag() {
     });
 }
 
-function createAgenda(labels) {
+function createAgenda(total, labels) {
   const container = document.getElementById("label_agenda");
   container.innerHTML = "";
   labels.sort((a, b) => a.value < b.value);
@@ -107,19 +141,23 @@ function createAgenda(labels) {
     details.appendChild(summary);
     details.appendChild(paragraph);
 
-    details.classList.add("dynamic-color");
-    details.style.setProperty("--bg", label.color);
-    details.style.setProperty("--fg", readableTextColor(label.color));
+    details.classList.add(label.toClass);
     return details;
   };
 
   labels.forEach((label) => {
     container.appendChild(createDetail(label));
   });
+
+  container.appendChild(
+    createDetail({ index: -1, title: "Total", value: total }),
+  );
 }
 
-function createEntryTemplate(label, entry) {
+function createEntryTemplate(show, label, entry) {
   const details = document.createElement("details");
+  details.classList.add(Label.toClass(entry.label));
+  details.id = entry.timestamp;
 
   const titleSpan = document.createElement("span");
   titleSpan.textContent = label.title;
@@ -135,28 +173,28 @@ function createEntryTemplate(label, entry) {
   removeLink.href = "#";
   removeLink.addEventListener("click", function (e) {
     e.preventDefault();
-    removeEntry(e, entry.timestamp);
+    removeEntry(details.id);
   });
 
   details.appendChild(summary);
   details.appendChild(removeLink);
 
-  details.style.setProperty("--bg", label.color);
-  details.style.setProperty("--fg", readableTextColor(label.color));
-  details.setAttribute("entry", JSON.stringify(entry));
+  if (!show) {
+    details.classList.add("hidden");
+  }
 
   return details;
 }
 
-// TODO: maybe do everything event based?
-function removeEntry(e, timestamp) {
+function removeEntry(timestamp) {
   const storedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
 
   let index = storedData.findIndex((element) => {
-    element.timestamp == timestamp;
+    return element.timestamp == timestamp;
   });
   if (index > -1) {
     storedData.splice(index, 1);
+    document.getElementById(timestamp).remove();
   } else {
     const newEntry = {
       event: "remove",
@@ -166,6 +204,7 @@ function removeEntry(e, timestamp) {
   }
 
   localStorage.setItem("dailyEntries", JSON.stringify(storedData));
+
   updateEntries();
 }
 
@@ -188,10 +227,25 @@ function prepareDropDown(labels) {
 }
 
 function getHTMLEntries(cached) {
+  function splitCurrencyLabel(label) {
+    let i = label.length - 1;
+    const value_symbols = "0123456789,.";
+    while (i >= 0 && !value_symbols.includes(label[i])) i--;
+    return {
+      currency: label.slice(i + 1).trim(),
+      value: label.slice(0, i + 1),
+    };
+  }
   const details = document.getElementById("details").children;
   const results = [];
   for (let i = 0; i < details.length; ++i) {
-    let entry = JSON.parse(details[i].getAttribute("entry"));
+    let timestamp = details[i].id;
+    let label = [...details[i].classList]
+      .map(Label.fromClass)
+      .find((x) => x != null);
+    let vc = splitCurrencyLabel(details[i].children[0].children[1].textContent);
+    const entry = new Entry(vc.value, vc.currency, label, timestamp);
+
     if (cached.findIndex((e) => e.timestamp == entry.timestamp) == -1) {
       results.push(entry);
     }
@@ -199,6 +253,14 @@ function getHTMLEntries(cached) {
 
   return results;
 }
+
+function getRootColor(color) {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(color)
+    .trim();
+}
+
+var agenda_size; // is set once on updateEntries and used for the donut size
 
 function updateEntries() {
   const details = document.getElementById("details");
@@ -212,95 +274,133 @@ function updateEntries() {
     label.value = 0;
     return label;
   });
-  console.log(storedData);
 
   const dont_draw = storedData
     .filter((e) => e.event === "remove")
     .map((e) => e.timestamp);
   const drawData = storedData.filter((e) => e.event !== "remove");
+  const filtered = new Filter();
+  const colors = [
+    getRootColor("--cat1"),
+    getRootColor("--cat2"),
+    getRootColor("--cat3"),
+    getRootColor("--cat4"),
+    getRootColor("--cat5"),
+    getRootColor("--cat6"),
+  ];
+  var total = 0;
   const summaries = drawData.reverse().reduce((p, c) => {
     if (!dont_draw.includes(c.timestamp)) {
       let idx = p.findIndex((item) => item.index === Number(c.label));
+      let show = filtered.show(c);
       let e = p[idx];
-      e.value += Number(c.value);
-      const entry = createEntryTemplate(e, c);
+      if (show) {
+        e.value += Number(c.value);
+        total += Number(c.value);
+        e.color = colors[idx];
+        p[idx] = e;
+      }
+      const entry = createEntryTemplate(show, e, c);
       details.appendChild(entry);
-      p[idx] = e;
     }
     return p;
   }, prepared_labels);
 
-  createAgenda(summaries);
-  const pie_size = convertEmToPx(
-    summaries.length * (summaries.length * 0.25 + 0.25),
-  );
+  createAgenda(total, summaries);
+  if (!agenda_size) {
+    let padding = summaries.length * 0.25 * 2;
+    let margin = summaries.length * 0.5;
+    agenda_size = convertEmToPx(summaries.length + padding + margin);
+  }
   const don = donut({
     data: summaries,
-    size: pie_size,
-    weight: pie_size / 2,
+    size: agenda_size,
   });
   document.getElementById("daily_donut").innerHTML = don.innerHTML;
 }
+function addDocumentEventListener() {
+  if (document.getElementById("daily_date").valueAsDate === null)
+    document.getElementById("daily_date").valueAsDate = new Date();
+  document.getElementById("daily_date").addEventListener("change", function () {
+    updateEntries();
+  });
+  document
+    .getElementById("menu_overview_select")
+    .addEventListener("change", function () {
+      updateEntries();
+    });
 
-document
-  .getElementById("daily_label_select")
-  .addEventListener("change", function () {
+  document
+    .getElementById("daily_label_select")
+    .addEventListener("change", function () {
+      document.getElementById("daily_input").focus();
+    });
+
+  document.getElementById("daily_form").addEventListener("submit", function () {
+    event.preventDefault();
+    const value = document.getElementById("daily_input").value;
+    const currency = "€";
+    const label = document.getElementById("daily_label_select").value;
+
+    if (value && label) {
+      let selectedDate =
+        document.getElementById("daily_date").valueAsDate || new Date();
+      let currentTime = new Date();
+      selectedDate.setHours(currentTime.getHours());
+      selectedDate.setMinutes(currentTime.getMinutes());
+      selectedDate.setSeconds(currentTime.getSeconds());
+      const dailyEntries =
+        JSON.parse(localStorage.getItem("dailyEntries")) || [];
+      const newEntry = new Entry(
+        value,
+        currency,
+        label,
+        selectedDate.getTime(),
+      );
+      dailyEntries.push(newEntry);
+      localStorage.setItem("dailyEntries", JSON.stringify(dailyEntries));
+      document.getElementById("daily_input").value = "";
+      document.getElementById("daily_label_select").value = label;
+      updateEntries();
+    }
     document.getElementById("daily_input").focus();
   });
 
-document.getElementById("daily_form").addEventListener("submit", function () {
-  event.preventDefault();
-  const value = document.getElementById("daily_input").value;
-  const currency = "€";
-  const label = document.getElementById("daily_label_select").value;
+  document
+    .getElementById("menu_export")
+    .addEventListener("submit", function () {
+      event.preventDefault();
+      const target = document.getElementById("menu_export_select").value;
 
-  if (value && label) {
-    const dailyEntries = JSON.parse(localStorage.getItem("dailyEntries")) || [];
-    const newEntry = {
-      value: Number(value).toFixed(2),
-      currency: currency,
-      label: label, // index
-      timestamp: Math.floor(Date.now() / 1000),
-    };
-    dailyEntries.push(newEntry);
-    localStorage.setItem("dailyEntries", JSON.stringify(dailyEntries));
-    document.getElementById("daily_input").value = "";
-    document.getElementById("daily_label_select").value = label;
-    updateEntries();
-  }
-  document.getElementById("daily_input").focus();
-});
-
-document.getElementById("menu_export").addEventListener("submit", function () {
-  event.preventDefault();
-  const target = document.getElementById("menu_export_select").value;
-  const htmlContent = "<!doctype html>" + document.documentElement.outerHTML;
-  console.log("target: ", target);
-  if (target === "server") {
-    fetch("/", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "text/html",
-        "if-match": localStorage.getItem("etag"),
-      },
-      body: htmlContent,
-    })
-      .then((response) => {
-        if (response.status === 200) {
-          localStorage.clear();
-        }
-        storeEtag(response);
-        document.innerHTML = response.text();
-      })
-      .catch((error) => {
-        console.log("Error:", error);
-      });
-  } else if (target === "file") {
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "ausgabenzettel.html";
-    link.click();
-    localStorage.clear();
-  }
-});
+      const htmlContent =
+        "<!doctype html>" + document.documentElement.outerHTML;
+      if (target === "server") {
+        if (window.location.href.startsWith("file://")) return;
+        fetch("/", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "text/html",
+            "if-match": localStorage.getItem("etag"),
+          },
+          body: htmlContent,
+        })
+          .then((response) => {
+            if (response.status === 200) {
+              localStorage.clear();
+            }
+            storeEtag(response);
+            document.innerHTML = response.text();
+          })
+          .catch((error) => {
+            console.log("Error:", error);
+          });
+      } else if (target === "file") {
+        const blob = new Blob([htmlContent], { type: "text/html" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "ausgabenzettel.html";
+        link.click();
+        localStorage.clear();
+      }
+    });
+}

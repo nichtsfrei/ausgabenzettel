@@ -3,17 +3,48 @@
   --fg: #000000;
   --bg-box: #f5e3f7;
   --acent-color: #0ee3f7; /* bords and stuff */
+  --cat0: #f5e3f7;
+  --cat1: #f7910c;
+  --cat2: #e7f70c;
+  --cat3: #f71c0c;
+  --cat4: #0cf7e3;
+  --cat5: #0c95f7;
+  --cat6: #0cf76e;
 }
 
 * {
   font-size: clamp(1rem, 2vw, 2rem);
-  background-color: var(--bg);
   color: var(--fg);
   font-family: monospace;
 }
 
-#info > div, svg {
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; 
+}
+
+.right-align {
+  align-items: right;
+  text-align: right;
+}
+
+select, button, input {
+  background-color: var(--bg);
+}
+
+#menu {
+input, select, button {
   background-color: var(--bg-box);
+  border: 1px solid var(--fg);
+  }
+}
+
+button, select, input[type="date"], label {
+  cursor: pointer;
+}
+
+body {
+  background-color: var(--bg);
 }
 
 body > * {
@@ -34,15 +65,77 @@ details {
 }
 
 summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   cursor: pointer;
-  outline: none;
-}
-
-
-#info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(25ch, 1fr));
+  font-weight: bold;
 }
+
+#menu > details > summary::after{
+  content: "☰";
+  margin-left: 0.25em;
+}
+
+#menu summary {
+  grid-template-columns: 1fr auto; 
+}
+
+
+#menu details[open] > summary {
+  margin-bottom: 0.5em;
+
+}
+
+#menu > details[open] > summary::after{
+  content: "☷";
+}
+
+#details summary,
+#label_agenda summary {
+  grid-template-columns: auto 1fr auto; 
+}
+
+
+#details details > summary::before, 
+#label_agenda details > summary::before{
+  content: "▸";
+  margin-right: 0.25em;
+}
+
+#details details[open] > summary::before, 
+#label_agenda details[open] > summary::before{
+  transform: rotate(90deg);
+}
+
+#details > details:not(:last-child) {
+  margin-bottom: 0.25em;
+
+}
+
+.hidden {
+  display: none;
+}
+.cat0, .cat0 * {
+  background-color: var(--cat0);
+}
+
+.cat1, .cat1 * {
+  background-color: var(--cat1);
+}
+
+.cat2, .cat2 * {
+  background-color: var(--cat2);
+}
+
+.cat3, .cat3 * {
+  background-color: var(--cat3);
+}
+.cat4, .cat4 * {
+  background-color: var(--cat4);
+}
+.cat5, .cat5 * {
+  background-color: var(--cat5);
+}
+.cat6, .cat6 * {
+  background-color: var(--cat6);
+}
+

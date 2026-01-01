@@ -1,18 +1,38 @@
-<form id="menu_export">
-  <select id="menu_export_select">
-    <option value="server">Server</option>
-    <option value="file">File</option>
-  </select>
-  <button id="menu_enter">Save</button>
+<div id="menu" class="row">
+  <div id="umSelectable">
+    <select id="menu_overview_select">
+      <option value="daily">daily</option>
+      <option value="weekly">weekly</option>
+      <option value="monthly">monthly</option>
+      <option value="yearly">yearly</option>
+      <option value="all">all</option>
+    </select>
+    <input id="daily_date" type="date" />
+  </div>
+  <details class="right-align">
+    <summary>Menu</summary>
+    <div>
+      <form id="menu_export">
+        <select id="menu_export_select">
+          <option value="server">Server</option>
+          <option value="file">File</option>
+        </select>
+        <button id="menu_enter">Export</button>
+      </form>
+    </div>
+  </details>
+</div>
+<form id="daily_form" class="row">
+  <div>
+    <label for="daily_input">€</label>
+    <input id="daily_input" type="number" min="0" step="0.01" />
+  </div>
+  <div class="right-align">
+    <select id="daily_label_select"></select>
+    <button id="daily_enter">OK</button>
+  </div>
 </form>
-<form id="daily_form">
-  <label for="daily_input">€</label>
-  <input id="daily_input" type="number" min="0" step="0.01" />
-  <select id="daily_label_select"></select>
-  <button id="daily_enter">OK</button>
-</form>
-<div id="info">
+<div id="info" class="row">
   <div id="daily_donut"></div>
   <div id="label_agenda"></div>
 </div>
-<div id="details"></div>

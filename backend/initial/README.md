@@ -1,1 +1,1 @@
-Contains the initial index.html without any kind of data
+Contains the initial templates and the initial body
