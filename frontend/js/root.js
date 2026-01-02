@@ -372,10 +372,10 @@ function addDocumentEventListener() {
       event.preventDefault();
       const target = document.getElementById("menu_export_select").value;
 
-      const htmlContent =
-        "<!doctype html>" + document.documentElement.outerHTML;
       if (target === "server") {
         if (window.location.href.startsWith("file://")) return;
+
+        const htmlContent = document.getElementById("details").outerHTML;
         fetch("/", {
           method: "PUT",
           headers: {
@@ -395,6 +395,8 @@ function addDocumentEventListener() {
             console.log("Error:", error);
           });
       } else if (target === "file") {
+        const htmlContent =
+          "<!doctype html>" + document.documentElement.outerHTML;
         const blob = new Blob([htmlContent], { type: "text/html" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
