@@ -388,6 +388,7 @@ function addDocumentEventListener() {
             if (response.status === 200) {
               localStorage.clear();
             }
+            //TODO: check for conflict and store again
             storeEtag(response);
             document.innerHTML = response.text();
           })

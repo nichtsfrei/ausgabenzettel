@@ -152,38 +152,27 @@ async fn save(
     State(ps): State<PageStreamer>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
-    match request.headers().get(header::IF_MATCH) {
+    let sc = match request.headers().get(header::IF_MATCH) {
         None => {
             tracing::warn!("if match header missing");
-            Ok(ps
-                .stream_file(
-                    ReturnType::Content,
-                    StatusCode::NOT_ACCEPTABLE,
-                    "current.html",
-                )
-                .await)
+            StatusCode::NOT_ACCEPTABLE
         }
-        // TODO: error handling
         Some(etag) => {
             let etag = etag.to_str().unwrap();
-            let current_etag = ps.etag(ps.path("current").as_ref()).await;
+            let current_etag = ps.etag(ps.path("current.html").as_ref()).await;
             if etag != current_etag {
                 tracing::warn!(etag, current_etag, "Wrong etag");
-                Ok(ps
-                    .stream_file(
-                        ReturnType::Content,
-                        StatusCode::NOT_ACCEPTABLE,
-                        "current.html",
-                    )
-                    .await)
+                StatusCode::CONFLICT
             } else {
                 stream_to_file("current.html", request.into_body().into_data_stream()).await?;
-                Ok(ps
-                    .stream_file(ReturnType::Content, StatusCode::OK, "current.html")
-                    .await)
+                StatusCode::OK
             }
         }
-    }
+    };
+
+    Ok(ps
+        .stream_file(ReturnType::Content, sc, "current.html")
+        .await)
 }
 
 fn path_is_valid(path: &str) -> bool {
@@ -209,9 +198,7 @@ where
     // TODO: use git to commit and add new versions
     let path = std::path::Path::new("upload").join(name);
     let mut file = BufWriter::new(File::create(&path).await?);
-    tracing::debug!(?path, "copying body");
     tokio::io::copy(&mut body_reader, &mut file).await?;
-    tracing::debug!(?path, "copyied body");
     // TODO: calculate sha256sum and return it as etag from body instead of from file
     let etag = sha256_digest(path).await;
     let sha256path = std::path::Path::new("upload").join(format!("{name}.sha256sum"));

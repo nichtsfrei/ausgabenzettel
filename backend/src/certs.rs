@@ -38,23 +38,18 @@ fn config_from_der(
 ) -> io::Result<ServerConfig> {
     let cert = cert.into_iter().map(CertificateDer::from).collect();
     let key = PrivateKeyDer::try_from(key).map_err(io_other)?;
-    dbg!("pkey");
     let cas = client_ca
         .into_iter()
         .map(CertificateDer::from)
         .collect::<Vec<_>>();
-    dbg!("cas");
     let mut root_ca = RootCertStore::empty();
     for ca in cas {
-        dbg!(&ca);
         root_ca.add(ca).map_err(io_other)?;
     }
     let client_cert_verifier = WebPkiClientVerifier::builder(root_ca.into())
         .build()
         .map_err(io_other)?;
 
-    dbg!("ccv");
-    dbg!(&cert, &key);
     let mut config = ServerConfig::builder()
         .with_client_cert_verifier(client_cert_verifier)
         .with_single_cert(cert, key)
