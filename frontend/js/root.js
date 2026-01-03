@@ -40,11 +40,12 @@ const labels = [
 ];
 
 class Entry {
-  constructor(value, currency, label, timestamp) {
+  constructor(value, currency, label, timestamp, title) {
     this.value = Number(value).toFixed(2);
     this.currency = currency;
     this.label = Number(label);
     this.timestamp = Number(timestamp);
+    this.title = title;
   }
 }
 
@@ -155,18 +156,48 @@ function createAgenda(total, labels) {
 }
 
 function createEntryTemplate(show, label, entry) {
+  function two_digits(num) {
+    if (num < 10) {
+      return `0${num}`;
+    } else {
+      return `${num}`;
+    }
+  }
+  function human_readable_ts(stamp) {
+    const ts = new Date(stamp);
+    const year = ts.getFullYear();
+    const month = two_digits(ts.getMonth() + 1);
+    const day =  two_digits(ts.getDate());
+    const hour = two_digits(ts.getHours());
+    const minute = two_digits(ts.getMinutes());
+    const seconds = two_digits(ts.getSeconds());
+    return `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
+  };
   const details = document.createElement("details");
   details.classList.add(Label.toClass(entry.label));
   details.id = entry.timestamp;
 
+  const hrts = human_readable_ts(entry.timestamp);
   const titleSpan = document.createElement("span");
-  titleSpan.textContent = label.title;
+  titleSpan.textContent = entry.title || hrts;
   const currencySpan = document.createElement("span");
   currencySpan.textContent = `${entry.value}${entry.currency}`;
 
   const summary = document.createElement("summary");
   summary.appendChild(titleSpan);
   summary.appendChild(currencySpan);
+
+  const detail_container = document.createElement("div");
+  const category_desc = document.createElement("div");
+  category_desc.classList.add("row");
+  const category_label = document.createElement("span");
+  category_label.textContent = "Category";
+  const category_title = document.createElement("span");
+  category_title.classList.add("right-align");
+  category_title.textContent = label.title;
+  category_desc.appendChild(category_label);
+  category_desc.appendChild(category_title);
+  detail_container.appendChild(category_desc);
 
   const removeLink = document.createElement("a");
   removeLink.textContent = "remove";
@@ -175,9 +206,10 @@ function createEntryTemplate(show, label, entry) {
     e.preventDefault();
     removeEntry(details.id);
   });
+  detail_container.appendChild(removeLink);
 
   details.appendChild(summary);
-  details.appendChild(removeLink);
+  details.appendChild(detail_container);
 
   if (!show) {
     details.classList.add("hidden");
@@ -351,13 +383,16 @@ function addDocumentEventListener() {
       selectedDate.setSeconds(currentTime.getSeconds());
       const dailyEntries =
         JSON.parse(localStorage.getItem("dailyEntries")) || [];
+      const title = document.getElementById("daily_title");
       const newEntry = new Entry(
         value,
         currency,
         label,
         selectedDate.getTime(),
+        title.value,
       );
       dailyEntries.push(newEntry);
+      title.value = null;
       localStorage.setItem("dailyEntries", JSON.stringify(dailyEntries));
       document.getElementById("daily_input").value = "";
       document.getElementById("daily_label_select").value = label;

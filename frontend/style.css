@@ -23,6 +23,14 @@
   grid-template-columns: 1fr 1fr; 
 }
 
+#daily_title {
+  width: 10em;
+}
+
+#daily_input {
+  width: 5em;
+}
+
 .right-align {
   align-items: right;
   text-align: right;
@@ -87,6 +95,10 @@ summary {
 
 #menu > details[open] > summary::after{
   content: "☷";
+}
+
+#details {
+
 }
 
 #details summary,
