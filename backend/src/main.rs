@@ -4,6 +4,7 @@
 //! cargo run -p example-tls-rustls
 //! ```
 mod certs;
+mod config;
 
 use axum::{
     BoxError, Router,
@@ -13,13 +14,11 @@ use axum::{
     response::IntoResponse,
     routing::{get, head, put},
 };
-use axum_server::tls_rustls::RustlsConfig;
+use futures_util::TryStreamExt;
 use futures_util::{Stream, StreamExt};
-use futures_util::{TryStreamExt, stream::Chain};
 use ring::digest::{Context, SHA256};
 use std::{
     io::{self},
-    net::SocketAddr,
     path::{Path, PathBuf},
     pin::pin,
 };
@@ -101,7 +100,7 @@ impl PageStreamer {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -110,18 +109,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let cert_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("certs");
-
-    // configure certificate and private key used by https
-    let config = certs::from_pem_file(
-        cert_dir.join("cert.pem"),
-        cert_dir.join("key.pem"),
-        cert_dir.join("ca.crt"),
-    )
-    .await
-    .unwrap();
+    let config = config::Config::init().await?;
     let ps = PageStreamer {
-        upload: PathBuf::from("upload"),
+        upload: config.upload_dir,
         empty_content_etag: "INITIAL".into(),
     };
 
@@ -130,15 +120,14 @@ async fn main() {
         .route("/", get(get_html))
         .route("/", head(header))
         .with_state(ps);
-    let config = RustlsConfig::from_config(config.into());
 
     // run https server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::debug!("listening on {}", addr);
-    axum_server::bind_rustls(addr, config)
+    tracing::info!("listening on {}", config.listening);
+    axum_server::bind_rustls(config.listening, config.tls)
         .serve(app.into_make_service())
         .await
         .unwrap();
+    Ok(())
 }
 
 async fn header(State(ps): State<PageStreamer>) -> impl IntoResponse {

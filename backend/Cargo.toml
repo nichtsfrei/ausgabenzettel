@@ -13,6 +13,7 @@ fs-err = { version = "3.2.0", features = ["tokio"] }
 futures-util = "0.3.31"
 ring = "0.17.14"
 rustls = "0.23.35"
+thiserror = "2.0.17"
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7.17"
 tracing = "0.1"
