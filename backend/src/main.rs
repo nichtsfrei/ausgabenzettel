@@ -1,8 +1,3 @@
-//! Run wit
-//!
-//! ```not_rust
-//! cargo run -p example-tls-rustls
-//! ```
 mod certs;
 mod config;
 
@@ -153,7 +148,12 @@ async fn save(
                 tracing::warn!(etag, current_etag, "Wrong etag");
                 StatusCode::CONFLICT
             } else {
-                stream_to_file("current.html", request.into_body().into_data_stream()).await?;
+                stream_to_file(
+                    &ps.upload,
+                    "current.html",
+                    request.into_body().into_data_stream(),
+                )
+                .await?;
                 StatusCode::OK
             }
         }
@@ -176,21 +176,20 @@ fn path_is_valid(path: &str) -> bool {
 
     components.count() == 1
 }
-async fn store<S, E>(name: &str, stream: S) -> Result<(), io::Error>
+async fn store<S, E>(base: &Path, name: &str, stream: S) -> Result<(), io::Error>
 where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,
 {
     let body_with_io_error = stream.map_err(io::Error::other);
     let mut body_reader = pin!(StreamReader::new(body_with_io_error));
-
-    // TODO: use git to commit and add new versions
-    let path = std::path::Path::new("upload").join(name);
+    let path = base.join(name);
+    tracing::debug!(?path, "file storage");
     let mut file = BufWriter::new(File::create(&path).await?);
     tokio::io::copy(&mut body_reader, &mut file).await?;
     // TODO: calculate sha256sum and return it as etag from body instead of from file
     let etag = sha256_digest(path).await;
-    let sha256path = std::path::Path::new("upload").join(format!("{name}.sha256sum"));
+    let sha256path = base.join(format!("{name}.sha256sum"));
     tracing::debug!(?sha256path, %etag, "etag");
     let mut file = BufWriter::new(File::create(&sha256path).await?);
     tokio::io::copy(&mut etag.as_bytes(), &mut file).await?;
@@ -199,7 +198,7 @@ where
     Ok(())
 }
 
-async fn stream_to_file<S, E>(name: &str, stream: S) -> Result<(), StatusCode>
+async fn stream_to_file<S, E>(base: &Path, name: &str, stream: S) -> Result<(), StatusCode>
 where
     S: Stream<Item = Result<Bytes, E>>,
     E: Into<BoxError>,
@@ -209,8 +208,8 @@ where
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    store(name, stream).await.map_err(|error| {
-        tracing::error!(%error, "Unable to store content");
+    store(base, name, stream).await.map_err(|error| {
+        tracing::error!(name, %error, "Unable to store content");
         StatusCode::INTERNAL_SERVER_ERROR
     })
 }
