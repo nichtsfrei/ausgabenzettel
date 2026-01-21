@@ -23,13 +23,22 @@
   grid-template-columns: 1fr 1fr; 
 }
 
+#daily_label_select {
+  width: 15ch;
+}
 #daily_title {
-  width: 10em;
+  width: 13ch;
 }
 
 #daily_input {
-  width: 5em;
+  width: 8ch;
 }
+
+
+#daily_date {
+  width: 13ch;
+}
+
 
 .right-align {
   align-items: right;
