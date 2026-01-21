@@ -6,77 +6,87 @@
         <title>Haushaltsbuch</title>
         <style>
 :root {
-  --bg: #eff2f2;
-  --fg: #000000;
-  --bg-box: #f5e3f7;
-  --acent-color: #0ee3f7; /* bords and stuff */
-  --cat0: #f5e3f7;
-  --cat1: #f7910c;
-  --cat2: #e7f70c;
-  --cat3: #f71c0c;
-  --cat4: #0cf7e3;
-  --cat5: #0c95f7;
-  --cat6: #0cf76e;
+    --bg: #eff2f2;
+    --fg: #000000;
+    --bg-box: #f5e3f7;
+    --acent-color: #0ee3f7; /* bords and stuff */
+    --cat0: #f5e3f7;
+    --cat1: #f7910c;
+    --cat2: #e7f70c;
+    --cat3: #f71c0c;
+    --cat4: #0cf7e3;
+    --cat5: #0c95f7;
+    --cat6: #0cf76e;
 }
 
 * {
-  font-size: clamp(1rem, 2vw, 2rem);
-  color: var(--fg);
-  font-family: monospace;
+    font-size: clamp(1rem, 2vw, 2rem);
+    color: var(--fg);
+    font-family: monospace;
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 1fr 1fr; 
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.auto-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(30ch, 1fr));
 }
 
 #daily_label_select {
-  width: 15ch;
+    width: 15ch;
 }
 #daily_title {
-  width: 13ch;
+    width: 13ch;
 }
 
 #daily_input {
-  width: 8ch;
+    width: 8ch;
 }
-
 
 #daily_date {
-  width: 13ch;
+    width: 13ch;
 }
-
 
 .right-align {
-  align-items: right;
-  text-align: right;
+    align-items: right;
+    text-align: right;
 }
 
-select, button, input {
-  background-color: var(--bg);
+select,
+button,
+input {
+    background-color: var(--bg);
 }
 
 #menu {
-input, select, button {
-  background-color: var(--bg-box);
-  border: 1px solid var(--fg);
-  }
+    input,
+    select,
+    button {
+        background-color: var(--bg-box);
+        border: 1px solid var(--fg);
+    }
 }
 
-button, select, input[type="date"], label {
-  cursor: pointer;
+button,
+select,
+input[type="date"],
+label {
+    cursor: pointer;
 }
 
 body {
-  background-color: var(--bg);
+    background-color: var(--bg);
 }
 
 body > * {
-  margin: 0.5em;
-  padding: 0.25em;
-  background-color: var(--bg-box);
-  border-radius: 8px;
-  border: 1px solid var(--acent-color);
+    margin: 0.5em;
+    padding: 0.25em;
+    background-color: var(--bg-box);
+    border-radius: 8px;
+    border: 1px solid var(--acent-color);
 }
 
 input,
@@ -84,89 +94,90 @@ select,
 label,
 button,
 details {
-  padding: 0.25em;
-  border-radius: 8px;
+    padding: 0.25em;
+    border-radius: 8px;
 }
 
 summary {
-  cursor: pointer;
-  display: grid;
-  font-weight: bold;
+    cursor: pointer;
+    display: grid;
+    font-weight: bold;
 }
 
-#menu > details > summary::after{
-  content: "☰";
-  margin-left: 0.25em;
+#menu > details > summary::after {
+    content: "☰";
+    margin-left: 0.25em;
 }
 
 #menu summary {
-  grid-template-columns: 1fr auto; 
+    grid-template-columns: 1fr auto;
 }
-
 
 #menu details[open] > summary {
-  margin-bottom: 0.5em;
-
+    margin-bottom: 0.5em;
 }
 
-#menu > details[open] > summary::after{
-  content: "☷";
+#menu > details[open] > summary::after {
+    content: "☷";
 }
 
 #details {
-
 }
 
 #details summary,
 #label_agenda summary {
-  grid-template-columns: auto 1fr auto; 
+    grid-template-columns: auto 1fr auto;
 }
 
-
-#details details > summary::before, 
-#label_agenda details > summary::before{
-  content: "▸";
-  margin-right: 0.25em;
+#details details > summary::before,
+#label_agenda details > summary::before {
+    content: "▸";
+    margin-right: 0.25em;
 }
 
-#details details[open] > summary::before, 
-#label_agenda details[open] > summary::before{
-  transform: rotate(90deg);
+#details details[open] > summary::before,
+#label_agenda details[open] > summary::before {
+    transform: rotate(90deg);
 }
 
 #details > details:not(:last-child) {
-  margin-bottom: 0.25em;
-
+    margin-bottom: 0.25em;
 }
 
 .hidden {
-  display: none;
+    display: none;
 }
-.cat0, .cat0 * {
-  background-color: var(--cat0);
-}
-
-.cat1, .cat1 * {
-  background-color: var(--cat1);
+.cat0,
+.cat0 * {
+    background-color: var(--cat0);
 }
 
-.cat2, .cat2 * {
-  background-color: var(--cat2);
+.cat1,
+.cat1 * {
+    background-color: var(--cat1);
 }
 
-.cat3, .cat3 * {
-  background-color: var(--cat3);
-}
-.cat4, .cat4 * {
-  background-color: var(--cat4);
-}
-.cat5, .cat5 * {
-  background-color: var(--cat5);
-}
-.cat6, .cat6 * {
-  background-color: var(--cat6);
+.cat2,
+.cat2 * {
+    background-color: var(--cat2);
 }
 
+.cat3,
+.cat3 * {
+    background-color: var(--cat3);
+}
+.cat4,
+.cat4 * {
+    background-color: var(--cat4);
+}
+.cat5,
+.cat5 * {
+    background-color: var(--cat5);
+}
+.cat6,
+.cat6 * {
+    background-color: var(--cat6);
+}
         </style>
     </head>
     <body>
@@ -455,7 +466,11 @@ function storeCurrentEtag() {
 function createAgenda(total, labels) {
   const container = document.getElementById("label_agenda");
   container.innerHTML = "";
-  labels.sort((a, b) => a.value < b.value);
+  labels.sort((a, b) => b.value - a.value);
+  console.log(
+    labels,
+    labels.sort((a, b) => a.value < b.value),
+  );
 
   let createDetail = (label) => {
     const details = document.createElement("details");
@@ -500,12 +515,12 @@ function createEntryTemplate(show, label, entry) {
     const ts = new Date(stamp);
     const year = ts.getFullYear();
     const month = two_digits(ts.getMonth() + 1);
-    const day =  two_digits(ts.getDate());
+    const day = two_digits(ts.getDate());
     const hour = two_digits(ts.getHours());
     const minute = two_digits(ts.getMinutes());
     const seconds = two_digits(ts.getSeconds());
     return `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
-  };
+  }
   const details = document.createElement("details");
   details.classList.add(Label.toClass(entry.label));
   details.id = entry.timestamp;
@@ -777,40 +792,47 @@ function addDocumentEventListener() {
 }
 </script>
 <div id="menu" class="row">
-  <div id="umSelectable">
-    <select id="menu_overview_select">
-      <option value="daily">daily</option>
-      <option value="weekly">weekly</option>
-      <option value="monthly">monthly</option>
-      <option value="yearly">yearly</option>
-      <option value="all">all</option>
-    </select>
-    <input id="daily_date" type="date" />
-  </div>
-  <details class="right-align">
-    <summary>Menu</summary>
-    <div>
-      <form id="menu_export">
-        <select id="menu_export_select">
-          <option value="server">Server</option>
-          <option value="file">File</option>
+    <div id="umSelectable">
+        <select id="menu_overview_select">
+            <option value="daily">daily</option>
+            <option value="weekly">weekly</option>
+            <option value="monthly">monthly</option>
+            <option value="yearly">yearly</option>
+            <option value="all">all</option>
         </select>
-        <button id="menu_enter">Export</button>
-      </form>
+        <input id="daily_date" type="date" />
     </div>
-  </details>
+    <details class="right-align">
+        <summary>Menu</summary>
+        <div>
+            <form id="menu_export">
+                <select id="menu_export_select">
+                    <option value="server">Server</option>
+                    <option value="file">File</option>
+                </select>
+                <button id="menu_enter">Export</button>
+            </form>
+        </div>
+    </details>
 </div>
 <form id="daily_form" class="row">
-  <div>
-    <input id="daily_input" type="number" min="0" step="0.01" required placeholder="€"/>
-    <input id="daily_title" placeholder="Title" />
-  </div>
-  <div class="right-align">
-    <select id="daily_label_select"></select>
-    <button id="daily_enter">OK</button>
-  </div>
+    <div>
+        <input
+            id="daily_input"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            placeholder="€"
+        />
+        <input id="daily_title" placeholder="Title" />
+    </div>
+    <div class="right-align">
+        <select id="daily_label_select"></select>
+        <button id="daily_enter">OK</button>
+    </div>
 </form>
-<div id="info" class="row">
-  <div id="daily_donut"></div>
-  <div id="label_agenda"></div>
+<div id="info" class="auto-row">
+    <div id="daily_donut"></div>
+    <div id="label_agenda"></div>
 </div>

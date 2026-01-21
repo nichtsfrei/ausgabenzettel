@@ -122,8 +122,7 @@ function storeCurrentEtag() {
 function createAgenda(total, labels) {
   const container = document.getElementById("label_agenda");
   container.innerHTML = "";
-  labels.sort((a, b) => a.value < b.value);
-
+  labels.sort((a, b) => b.value - a.value);
   let createDetail = (label) => {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
@@ -167,12 +166,12 @@ function createEntryTemplate(show, label, entry) {
     const ts = new Date(stamp);
     const year = ts.getFullYear();
     const month = two_digits(ts.getMonth() + 1);
-    const day =  two_digits(ts.getDate());
+    const day = two_digits(ts.getDate());
     const hour = two_digits(ts.getHours());
     const minute = two_digits(ts.getMinutes());
     const seconds = two_digits(ts.getSeconds());
     return `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
-  };
+  }
   const details = document.createElement("details");
   details.classList.add(Label.toClass(entry.label));
   details.id = entry.timestamp;
