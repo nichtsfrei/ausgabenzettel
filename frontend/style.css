@@ -114,9 +114,6 @@ summary {
     content: "☷";
 }
 
-#details {
-}
-
 #details summary,
 #label_agenda summary {
     grid-template-columns: auto 1fr auto;
