@@ -121,9 +121,6 @@ summary {
     content: "☷";
 }
 
-#details {
-}
-
 #details summary,
 #label_agenda summary {
     grid-template-columns: auto 1fr auto;
@@ -467,11 +464,6 @@ function createAgenda(total, labels) {
   const container = document.getElementById("label_agenda");
   container.innerHTML = "";
   labels.sort((a, b) => b.value - a.value);
-  console.log(
-    labels,
-    labels.sort((a, b) => a.value < b.value),
-  );
-
   let createDetail = (label) => {
     const details = document.createElement("details");
     const summary = document.createElement("summary");

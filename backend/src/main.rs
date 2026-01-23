@@ -16,6 +16,10 @@ use std::{
     io::{self},
     path::{Path, PathBuf},
     pin::pin,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::{ReaderStream, StreamReader};
@@ -30,6 +34,7 @@ enum ReturnType {
 struct PageStreamer {
     upload: PathBuf,
     empty_content_etag: String,
+    write_process: Arc<AtomicBool>,
 }
 
 impl PageStreamer {
@@ -108,6 +113,7 @@ async fn main() -> anyhow::Result<()> {
     let ps = PageStreamer {
         upload: config.upload_dir,
         empty_content_etag: "INITIAL".into(),
+        write_process: Arc::new(AtomicBool::default()),
     };
 
     let app = Router::new()
@@ -126,10 +132,18 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn header(State(ps): State<PageStreamer>) -> impl IntoResponse {
-    let path = ps.path("current.html");
+    let path = ps.path("root");
     let etag = ps.etag(path.as_ref()).await;
     let header = [(header::ETAG, etag)];
     (header, StatusCode::OK)
+}
+
+struct WriteGuard<'a>(&'a AtomicBool);
+
+impl<'a> Drop for WriteGuard<'a> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
 }
 
 async fn save(
@@ -143,39 +157,31 @@ async fn save(
         }
         Some(etag) => {
             let etag = etag.to_str().unwrap();
-            let current_etag = ps.etag(ps.path("current.html").as_ref()).await;
+            let current_etag = ps.etag(ps.path("root").as_ref()).await;
             if etag != current_etag {
-                tracing::warn!(etag, current_etag, "Wrong etag");
                 StatusCode::CONFLICT
+            } else if ps.write_process.swap(true, Ordering::Release) {
+                StatusCode::LOCKED
             } else {
-                stream_to_file(
-                    &ps.upload,
-                    "current.html",
-                    request.into_body().into_data_stream(),
-                )
-                .await?;
-                StatusCode::OK
+                let _guard = WriteGuard(&ps.write_process);
+                let result =
+                    stream_to_file(&ps.upload, "root", request.into_body().into_data_stream())
+                        .await;
+                match result {
+                    Ok(_) => StatusCode::OK,
+                    Err(e) => return Err(e),
+                }
             }
         }
     };
 
-    Ok(ps
-        .stream_file(ReturnType::Content, sc, "current.html")
-        .await)
+    Ok(ps.stream_file(ReturnType::Content, sc, "root").await)
 }
 
-fn path_is_valid(path: &str) -> bool {
-    let path = std::path::Path::new(path);
-    let mut components = path.components().peekable();
-
-    if let Some(first) = components.peek()
-        && !matches!(first, std::path::Component::Normal(_))
-    {
-        return false;
-    }
-
-    components.count() == 1
+fn path_is_valid(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric())
 }
+
 async fn store<S, E>(base: &Path, name: &str, stream: S) -> Result<(), io::Error>
 where
     S: Stream<Item = Result<Bytes, E>>,
@@ -257,6 +263,6 @@ where
 }
 
 async fn get_html(State(ps): State<PageStreamer>) -> impl IntoResponse {
-    ps.stream_file(ReturnType::Full, StatusCode::OK, "current.html")
+    ps.stream_file(ReturnType::Full, StatusCode::OK, "root")
         .await
 }
