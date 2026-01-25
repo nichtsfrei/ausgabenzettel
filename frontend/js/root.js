@@ -262,8 +262,9 @@ function getHTMLEntries(cached) {
     let label = [...details[i].classList]
       .map(Label.fromClass)
       .find((x) => x != null);
+    let title = details[i].children[0].children[0].textContent;
     let vc = splitCurrencyLabel(details[i].children[0].children[1].textContent);
-    const entry = new Entry(vc.value, vc.currency, label, timestamp);
+    const entry = new Entry(vc.value, vc.currency, label, timestamp, title);
 
     if (cached.findIndex((e) => e.timestamp == entry.timestamp) == -1) {
       results.push(entry);
@@ -286,8 +287,9 @@ function updateEntries() {
   const cachedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
   const storedData = getHTMLEntries(cachedData);
   storedData.push(...cachedData);
+  storedData.sort((a, b) => a.timestamp - b.timestamp);
 
-  //TODO: don't redraw on cachedData.length === 0 but add remove listener
+
   details.innerHTML = "";
   const prepared_labels = labels.map((label) => {
     label.value = 0;
