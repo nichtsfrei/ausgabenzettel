@@ -104,7 +104,7 @@ function storeEtag(response) {
 
 function storeCurrentEtag() {
   if (window.location.href.startsWith("file://")) return;
-  fetch("/", {
+  fetch(window.location.href, {
     method: "HEAD",
   })
     .then((response) => {
@@ -348,6 +348,9 @@ function updateEntries() {
     size: agenda_size,
   });
   document.getElementById("daily_donut").innerHTML = don.innerHTML;
+  if (cachedData.length > 0) {
+    put_to_server();
+  }
 }
 
 
@@ -355,7 +358,7 @@ function put_to_server() {
   if (window.location.href.startsWith("file://")) return;
 
   const htmlContent = document.getElementById("details").outerHTML;
-  fetch("/", {
+  fetch(window.location.href, {
     method: "PUT",
     headers: {
       "Content-Type": "text/html",
@@ -369,11 +372,6 @@ function put_to_server() {
       }
       storeEtag(response);
       document.innerHTML = response.text();
-      if (response.status !== 200) {
-        updateEntries();
-        // potential endless loop
-        // put_to_server();
-      }
     })
     .catch((error) => {
       console.log("Error:", error);
@@ -427,7 +425,6 @@ function addDocumentEventListener() {
       document.getElementById("daily_input").value = "";
       document.getElementById("daily_label_select").value = label;
       updateEntries();
-      put_to_server();
     }
     document.getElementById("daily_input").focus();
   });

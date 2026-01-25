@@ -4,11 +4,13 @@ mod config;
 use axum::{
     BoxError, Router,
     body::{Body, Bytes},
+    extract::Path as APath,
     extract::{Request, State},
     http::{StatusCode, header},
-    response::IntoResponse,
+    response::{IntoResponse, Redirect},
     routing::{get, head, put},
 };
+use chrono::{Datelike, Utc};
 use futures_util::TryStreamExt;
 use futures_util::{Stream, StreamExt};
 use ring::digest::{Context, SHA256};
@@ -62,9 +64,9 @@ impl PageStreamer {
         self,
         rt: ReturnType,
         status: StatusCode,
-        content_path: &str,
+        content_path: String,
     ) -> impl IntoResponse {
-        let path = self.path(content_path);
+        let path = self.path(&content_path);
         let header = [
             (header::CONTENT_TYPE, "text/html".to_string()),
             (header::ETAG, self.etag(path.as_ref()).await),
@@ -117,12 +119,12 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = Router::new()
-        .route("/", put(save))
-        .route("/", get(get_html))
-        .route("/", head(header))
+        .route("/", get(redirect_to_year))
+        .route("/{name}", put(save))
+        .route("/{name}", get(get_html))
+        .route("/{name}", head(header))
         .with_state(ps);
 
-    // run https server
     tracing::info!("listening on {}", config.listening);
     axum_server::bind_rustls(config.listening, config.tls)
         .serve(app.into_make_service())
@@ -131,8 +133,13 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn header(State(ps): State<PageStreamer>) -> impl IntoResponse {
-    let path = ps.path("root");
+async fn redirect_to_year() -> Redirect {
+    let current_year = Utc::now().year();
+    Redirect::temporary(&format!("/{}", current_year))
+}
+
+async fn header(State(ps): State<PageStreamer>, APath(name): APath<String>) -> impl IntoResponse {
+    let path = ps.path(&name);
     let etag = ps.etag(path.as_ref()).await;
     let header = [(header::ETAG, etag)];
     (header, StatusCode::OK)
@@ -148,6 +155,7 @@ impl<'a> Drop for WriteGuard<'a> {
 
 async fn save(
     State(ps): State<PageStreamer>,
+    APath(name): APath<String>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let sc = match request.headers().get(header::IF_MATCH) {
@@ -157,16 +165,17 @@ async fn save(
         }
         Some(etag) => {
             let etag = etag.to_str().unwrap();
-            let current_etag = ps.etag(ps.path("root").as_ref()).await;
+            let current_etag = ps.etag(ps.path(&name).as_ref()).await;
             if etag != current_etag {
                 StatusCode::CONFLICT
+            // FIXME: this blocks write access although they could be potentially on
+            // different files based on the name param.
             } else if ps.write_process.swap(true, Ordering::Release) {
                 StatusCode::LOCKED
             } else {
                 let _guard = WriteGuard(&ps.write_process);
                 let result =
-                    stream_to_file(&ps.upload, "root", request.into_body().into_data_stream())
-                        .await;
+                    stream_to_file(&ps.upload, &name, request.into_body().into_data_stream()).await;
                 match result {
                     Ok(_) => StatusCode::OK,
                     Err(e) => return Err(e),
@@ -175,7 +184,7 @@ async fn save(
         }
     };
 
-    Ok(ps.stream_file(ReturnType::Content, sc, "root").await)
+    Ok(ps.stream_file(ReturnType::Content, sc, name).await)
 }
 
 fn path_is_valid(s: &str) -> bool {
@@ -193,7 +202,6 @@ where
     tracing::debug!(?path, "file storage");
     let mut file = BufWriter::new(File::create(&path).await?);
     tokio::io::copy(&mut body_reader, &mut file).await?;
-    // TODO: calculate sha256sum and return it as etag from body instead of from file
     let etag = sha256_digest(path).await;
     let sha256path = base.join(format!("{name}.sha256sum"));
     tracing::debug!(?sha256path, %etag, "etag");
@@ -262,7 +270,6 @@ where
     }
 }
 
-async fn get_html(State(ps): State<PageStreamer>) -> impl IntoResponse {
-    ps.stream_file(ReturnType::Full, StatusCode::OK, "root")
-        .await
+async fn get_html(State(ps): State<PageStreamer>, APath(name): APath<String>) -> impl IntoResponse {
+    ps.stream_file(ReturnType::Full, StatusCode::OK, name).await
 }

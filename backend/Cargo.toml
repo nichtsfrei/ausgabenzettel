@@ -8,6 +8,7 @@ anyhow = "1.0.100"
 axum = "0"
 axum-extra = "0.12.2"
 axum-server = { version = "0", features = ["tls-rustls"] }
+chrono = "0.4.43"
 data-encoding = "2.9.0"
 fs-err = { version = "3.2.0", features = ["tokio"] }
 futures-util = "0.3.31"
