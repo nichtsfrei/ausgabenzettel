@@ -360,24 +360,12 @@ class Label {
 }
 
 const labels = [
-  new Label("Groceries", "Food & drinks for home", 0),
-  new Label("Dining Out", "Restaurants, cafés, bars, takeout, delivery", 1),
-  new Label("Housing", "Rent, utilities, maintenance, repairs", 2),
-  new Label(
-    "Transportation",
-    "Public transit, fuel, car costs, bike, parking, rideshare",
-    3,
-  ),
-  new Label(
-    "Necessities",
-    "Essential non-food items like cleaning supplies, toiletries, basic clothing",
-    4,
-  ),
-  new Label(
-    "Entertainment",
-    "Electronics, gadgets, entertainment, hobbies, subscriptions, leisure activities",
-    5,
-  ),
+  new Label("Alltag", "Laufende Kosten für den täglichen Bedarf, wie Lebensmittel und Toilettenpapier", 0),
+  new Label("Ausgehen", "Ausgaben für Freizeitaktivitäten, wie Restaurantbesuche, Cafés, Bars, Takeout und Lieferdienste", 1),
+  new Label("Anschaffungen", "Investitionen in größere Käufe wie Elektronik, Möbel oder Haushaltsgeräte", 2),
+  new Label("Reisen", "Kosten für Reisen, einschließlich Tickets, Hotels und andere Reiseausgaben", 3),
+  new Label("Beauty & Wellness", "Ausgaben für Schönheitspflege und Entspannung, wie Massagen, Friseurbesuche und Wellnessangebote", 4),
+  new Label("Entertainment", "Ausgaben für Unterhaltung, wie Streaming-Abos, Kinotickets und andere Freizeitangebote", 5)
 ];
 
 class Entry {
