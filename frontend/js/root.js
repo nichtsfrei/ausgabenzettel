@@ -90,7 +90,7 @@ class Filter {
   }
 }
 
-window.onload = function () {
+window.onload = function() {
   addDocumentEventListener();
   storeCurrentEtag();
   prepareDropDown(labels);
@@ -201,7 +201,7 @@ function createEntryTemplate(show, label, entry) {
   const removeLink = document.createElement("a");
   removeLink.textContent = "remove";
   removeLink.href = "#";
-  removeLink.addEventListener("click", function (e) {
+  removeLink.addEventListener("click", function(e) {
     e.preventDefault();
     removeEntry(details.id);
   });
@@ -349,25 +349,56 @@ function updateEntries() {
   });
   document.getElementById("daily_donut").innerHTML = don.innerHTML;
 }
+
+
+function put_to_server() {
+  if (window.location.href.startsWith("file://")) return;
+
+  const htmlContent = document.getElementById("details").outerHTML;
+  fetch("/", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "text/html",
+      "if-match": localStorage.getItem("etag"),
+    },
+    body: htmlContent,
+  })
+    .then((response) => {
+      if (response.status === 200) {
+        localStorage.clear();
+      }
+      storeEtag(response);
+      document.innerHTML = response.text();
+      if (response.status !== 200) {
+        updateEntries();
+        // potential endless loop
+        // put_to_server();
+      }
+    })
+    .catch((error) => {
+      console.log("Error:", error);
+    });
+}
+
 function addDocumentEventListener() {
   if (document.getElementById("daily_date").valueAsDate === null)
     document.getElementById("daily_date").valueAsDate = new Date();
-  document.getElementById("daily_date").addEventListener("change", function () {
+  document.getElementById("daily_date").addEventListener("change", function() {
     updateEntries();
   });
   document
     .getElementById("menu_overview_select")
-    .addEventListener("change", function () {
+    .addEventListener("change", function() {
       updateEntries();
     });
 
   document
     .getElementById("daily_label_select")
-    .addEventListener("change", function () {
+    .addEventListener("change", function() {
       document.getElementById("daily_input").focus();
     });
 
-  document.getElementById("daily_form").addEventListener("submit", function () {
+  document.getElementById("daily_form").addEventListener("submit", function(event) {
     event.preventDefault();
     const value = document.getElementById("daily_input").value;
     const currency = "€";
@@ -396,39 +427,19 @@ function addDocumentEventListener() {
       document.getElementById("daily_input").value = "";
       document.getElementById("daily_label_select").value = label;
       updateEntries();
+      put_to_server();
     }
     document.getElementById("daily_input").focus();
   });
 
   document
     .getElementById("menu_export")
-    .addEventListener("submit", function () {
+    .addEventListener("submit", function(event) {
       event.preventDefault();
       const target = document.getElementById("menu_export_select").value;
 
       if (target === "server") {
-        if (window.location.href.startsWith("file://")) return;
-
-        const htmlContent = document.getElementById("details").outerHTML;
-        fetch("/", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "text/html",
-            "if-match": localStorage.getItem("etag"),
-          },
-          body: htmlContent,
-        })
-          .then((response) => {
-            if (response.status === 200) {
-              localStorage.clear();
-            }
-            //TODO: check for conflict and store again
-            storeEtag(response);
-            document.innerHTML = response.text();
-          })
-          .catch((error) => {
-            console.log("Error:", error);
-          });
+        put_to_server();
       } else if (target === "file") {
         const htmlContent =
           "<!doctype html>" + document.documentElement.outerHTML;
