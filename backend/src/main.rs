@@ -211,11 +211,8 @@ where
     tokio::io::copy(&mut etag.as_bytes(), &mut file).await?;
     tracing::debug!(?sha256path, %etag, "stored");
 
-  let name_owned = name.to_string();
-    let etag_owned = etag.clone();
-    let path_owned = base.to_path_buf();
-    if git::is_git_repo(path_owned.clone()).await {
-        if let Err(e) = git::git_commit(path_owned, name_owned, etag_owned).await {
+   if git::is_git_repo(base).await {
+        if let Err(e) = git::git_commit(base, name.to_string(), etag.to_string()).await {
             tracing::warn!(%e, "Git commit failed");
         } else {
             tracing::info!("Git commit created");

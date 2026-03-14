@@ -1,15 +1,16 @@
 // src/git.rs
 
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 use tokio::task::spawn_blocking;
 
-pub async fn is_git_repo(path: PathBuf) -> bool {
+pub async fn is_git_repo(path: &Path) -> bool {
+    let path_owned = path.to_path_buf();
     spawn_blocking(move || {
         Command::new("git")
             .arg("-C")
-            .arg(&path)
+            .arg(&path_owned)
             .arg("rev-parse")
             .arg("--is-inside-work-tree")
             .output()
@@ -21,15 +22,15 @@ pub async fn is_git_repo(path: PathBuf) -> bool {
 }
 
 pub async fn git_commit(
-    path: PathBuf,
+    path: &Path,
     filename: String,
     sha256: String,
 ) -> Result<(), String> {
+    let path_owned = path.to_path_buf();
     let result = spawn_blocking(move || {
-        let path_clone = path.clone();
         let output = match Command::new("git")
             .arg("-C")
-            .arg(&path)
+            .arg(&path_owned)
             .arg("add")
             .arg("-A")
             .output()
@@ -46,7 +47,7 @@ pub async fn git_commit(
 
         let output = match Command::new("git")
             .arg("-C")
-            .arg(&path_clone)
+            .arg(&path_owned)
             .arg("commit")
             .arg("-m")
             .arg(&message)
@@ -74,10 +75,8 @@ pub async fn git_commit(
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_is_git_repo() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-        let result = runtime.block_on(is_git_repo(PathBuf::from("/tmp")));
-        assert!(!result);
+    #[tokio::test]
+    async fn test_is_git_repo() {
+        assert!(!is_git_repo(std::path::Path::new("/tmp")).await);
     }
 }
