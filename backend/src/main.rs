@@ -1,7 +1,7 @@
 mod certs;
 mod config;
 mod git;
-mod parser;
+//mod parser;
 
 use axum::{
     BoxError, Router,
@@ -211,7 +211,7 @@ where
     tokio::io::copy(&mut etag.as_bytes(), &mut file).await?;
     tracing::debug!(?sha256path, %etag, "stored");
 
-   if git::is_git_repo(base).await {
+    if git::is_git_repo(base).await {
         if let Err(e) = git::git_commit(base, name.to_string(), etag.to_string()).await {
             tracing::warn!(%e, "Git commit failed");
         } else {

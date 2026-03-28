@@ -6,6 +6,7 @@ class Label {
   }
   get toClass() {
     return Label.toClass(this.index);
+
   }
   static toClass(index) {
     return `cat${Number(index) + 1}`;
@@ -24,7 +25,8 @@ const labels = [
   new Label("Anschaffungen", "Investitionen in größere Käufe wie Elektronik, Möbel oder Haushaltsgeräte", 2),
   new Label("Reisen", "Kosten für Reisen, einschließlich Tickets, Hotels und andere Reiseausgaben", 3),
   new Label("Beauty & Wellness", "Ausgaben für Schönheitspflege und Entspannung, wie Massagen, Friseurbesuche und Wellnessangebote", 4),
-  new Label("Entertainment", "Ausgaben für Unterhaltung, wie Streaming-Abos, Kinotickets und andere Freizeitangebote", 5)
+  new Label("Entertainment", "Ausgaben für Unterhaltung, wie Streaming-Abos, Kinotickets und andere Freizeitangebote", 5),
+  new Label("Keine", "Keine Kategorie.", 403),
 ];
 
 class Entry {
@@ -107,6 +109,7 @@ function storeCurrentEtag() {
     });
 }
 
+
 function createAgenda(total, labels) {
   const container = document.getElementById("label_agenda");
   container.innerHTML = "";
@@ -134,32 +137,65 @@ function createAgenda(total, labels) {
   };
 
   labels.forEach((label) => {
-    container.appendChild(createDetail(label));
+    const detail = createDetail(label);
+    detail.addEventListener("toggle", function() {
+      if (this.open) {
+        document.querySelectorAll("#label_agenda details").forEach(d => {
+          if (d !== detail) d.open = false;
+        });
+        show_category = label.index;
+        redraw_entries();
+      } else {
+        const anyOtherOpen = document.querySelectorAll("#label_agenda details[open]").length > 0;
+        if (!anyOtherOpen) {
+          show_category = null;
+          redraw_entries();
+        }
+      }
+    });
+    container.appendChild(detail);
   });
 
-  container.appendChild(
-    createDetail({ index: -1, title: "Total", value: total }),
-  );
+  const totalDetail = createDetail({ index: -1, title: "Total", value: total });
+  container.appendChild(totalDetail);
 }
 
 function createEntryTemplate(show, label, entry) {
-  function two_digits(num) {
-    if (num < 10) {
-      return `0${num}`;
-    } else {
-      return `${num}`;
+    function two_digits(num) {
+      if (num < 10) {
+        return `0${num}`;
+      } else {
+        return `${num}`;
+      }
     }
-  }
-  function human_readable_ts(stamp) {
-    const ts = new Date(stamp);
-    const year = ts.getFullYear();
-    const month = two_digits(ts.getMonth() + 1);
-    const day = two_digits(ts.getDate());
-    const hour = two_digits(ts.getHours());
-    const minute = two_digits(ts.getMinutes());
-    const seconds = two_digits(ts.getSeconds());
-    return `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
-  }
+    function human_readable_ts(stamp) {
+      const num = Number(stamp);
+      const ts = new Date(num);
+      if (isNaN(ts.getTime())) return "Invalid timestamp";
+      const year = ts.getFullYear();
+      const month = two_digits(ts.getMonth() + 1);
+      const day = two_digits(ts.getDate());
+      const hour = two_digits(ts.getHours());
+      const minute = two_digits(ts.getMinutes());
+      const seconds = two_digits(ts.getSeconds());
+      return `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
+    }
+function date_display(stamp) {
+      const num = Number(stamp);
+      if (isNaN(num)) return "Unknown";
+      const ts = new Date(num);
+      if (isNaN(ts.getTime())) return "Unknown";
+      const year = ts.getFullYear();
+      const monthVal = ts.getMonth() + 1;
+      const dayVal = ts.getDate();
+      const hourVal = ts.getHours();
+      const minuteVal = ts.getMinutes();
+      const month = two_digits(monthVal);
+      const day = two_digits(dayVal);
+      const hour = two_digits(hourVal);
+      const minute = two_digits(minuteVal);
+      return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
   const details = document.createElement("details");
   details.classList.add(Label.toClass(entry.label));
   details.id = entry.timestamp;
@@ -185,6 +221,17 @@ function createEntryTemplate(show, label, entry) {
   category_desc.appendChild(category_label);
   category_desc.appendChild(category_title);
   detail_container.appendChild(category_desc);
+
+  const date_desc = document.createElement("div");
+  date_desc.classList.add("row");
+  const date_label = document.createElement("span");
+  date_label.textContent = "Date";
+  const date_value = document.createElement("span");
+  date_value.classList.add("right-align");
+  date_value.textContent = date_display(entry.timestamp);
+  date_desc.appendChild(date_label);
+  date_desc.appendChild(date_value);
+  detail_container.appendChild(date_desc);
 
   const removeLink = document.createElement("a");
   removeLink.textContent = "remove";
@@ -281,6 +328,28 @@ function getRootColor(color) {
 }
 
 var agenda_size; // is set once on updateEntries and used for the donut size
+var show_category = null;
+
+function redraw_entries() {
+  const details = document.getElementById("details");
+  const cachedData = JSON.parse(localStorage.getItem("dailyEntries")) || [];
+  const storedData = getHTMLEntries(cachedData);
+  storedData.push(...cachedData);
+  storedData.sort((a, b) => a.timestamp - b.timestamp);
+  const filtered = new Filter();
+  const drawData = storedData.filter((e) => e.event !== "remove");
+  details.innerHTML = "";
+  drawData.forEach((element) => {
+    let show = filtered.show(element) && (show_category == null || show_category == element.label );
+
+      let idx = labels.findIndex((item) => item.index === element.label);
+
+      const entry = createEntryTemplate(show, labels[idx], element);
+      details.appendChild(entry);
+
+  });
+
+}
 
 function updateEntries() {
   const details = document.getElementById("details");
@@ -300,6 +369,7 @@ function updateEntries() {
     .filter((e) => e.event === "remove")
     .map((e) => e.timestamp);
   const drawData = storedData.filter((e) => e.event !== "remove");
+  
   const filtered = new Filter();
   const colors = [
     getRootColor("--cat1"),
@@ -308,6 +378,7 @@ function updateEntries() {
     getRootColor("--cat4"),
     getRootColor("--cat5"),
     getRootColor("--cat6"),
+    getRootColor("--cat404"),
   ];
   var total = 0;
   const summaries = drawData.reverse().reduce((p, c) => {

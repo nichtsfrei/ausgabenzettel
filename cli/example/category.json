@@ -1,0 +1,32 @@
+[
+  {
+    "index": 0,
+    "title": "Alltag",
+    "description": "Laufende Kosten für den täglichen Bedarf, wie Lebensmittel und Toilettenpapier"
+  },
+  {
+    "index": 1,
+    "title": "Ausgehen",
+    "description": "Ausgaben für Freizeitaktivitäten, wie Restaurantbesuche, Cafés, Bars, Takeout und Lieferdienste"
+  },
+  {
+    "index": 2,
+    "title": "Anschaffungen",
+    "description": "Investitionen in größere Käufe wie Elektronik, Möbel oder Haushaltsgeräte"
+  },
+  {
+    "index": 3,
+    "title": "Reisen",
+    "description": "Kosten für Reisen, einschließlich Tickets, Hotels und andere Reiseausgaben"
+  },
+  {
+    "index": 4,
+    "title": "Beauty & Wellness",
+    "description": "Ausgaben für Schönheitspflege und Entspannung, wie Massagen, Friseurbesuche und Wellnessangebote"
+  },
+  {
+    "index": 5,
+    "title": "Entertainment",
+    "description": "Ausgaben für Unterhaltung, wie Streaming-Abos, Kinotickets und andere Freizeitangebote"
+  }
+]
